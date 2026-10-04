@@ -1,0 +1,6 @@
+{
+  "name": "VISION BOOKS",
+  "description": "Bibliothèque professionnelle de livres audio premium pour entrepreneurs, investisseurs et visionnaires.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
