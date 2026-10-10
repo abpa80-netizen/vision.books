@@ -49,6 +49,15 @@ export interface Product {
   summary?: string;
   audioPreviewUrl?: string;
   keyTakeaways?: string[];
+
+  // Format du produit (Livre audio 🎧, Ebook 📚, Autre format 📦)
+  format?: 'audiobook' | 'ebook' | 'other' | string;
+
+  // Urgence Marketing configurable
+  urgency_active?: boolean;
+  urgency_end_date?: string; // Format ISO ou 'YYYY-MM-DDTHH:mm'
+  urgency_text?: string;     // Ex: "Offre de lancement expire ce soir !"
+  urgency_badge?: string;    // Ex: "Offre limitée", "Vente flash"
 }
 
 export interface Testimonial {
@@ -104,6 +113,16 @@ export interface Lead {
   createdAt?: string;
   status?: 'nouveau' | 'contacté' | 'converti';
   interestedCategory?: string;
+
+  // Séquence de Relances Marketing J1, J2, J3
+  followup_j1?: string;
+  followup_j2?: string;
+  followup_j3?: string;
+  followup_generated_at?: string;
+  followup_updated_at?: string;
+  followup_status_j1?: 'a_envoyer' | 'envoye' | 'en_attente';
+  followup_status_j2?: 'a_envoyer' | 'envoye' | 'en_attente';
+  followup_status_j3?: 'a_envoyer' | 'envoye' | 'en_attente';
 }
 
 export interface LeadMagnet {
@@ -128,6 +147,53 @@ export interface LeadMagnet {
   downloadsCount?: number;
   status?: 'actif' | 'brouillon';
   associatedCategory?: string;
+
+  // Format du Lead Magnet (Ebook 📚, Livre audio 🎧, Autre format 📦)
+  format?: 'ebook' | 'audiobook' | 'other' | string;
+
+  // Champs de contenu marketing IA
+  topic?: string;
+  target_audience?: string;
+  raw_content?: string;
+  hook?: string;
+  key_points?: string[] | string;
+  visitor_content?: string;
+  short_pitch?: string;
+  cta_text?: string;
+  share_caption?: string;
+  social_post?: string;
+  landing_text?: string;
+  curiosity_hook?: string;
+}
+
+export interface LeadMagnetMarketingContent {
+  title: string;
+  subtitle: string;
+  hook: string;
+  description: string;
+  benefits: string[];
+  key_points: string[];
+  visitor_content: string;
+  short_pitch: string;
+  cta_text: string;
+  share_caption: string;
+  social_post: string;
+  landing_text: string;
+  curiosity_hook: string;
+}
+
+export interface CategorySuggestion {
+  is_new: boolean;
+  name: string;
+  slug?: string;
+  rationale: string;
+  existing_category_slug?: string;
+  new_category_details?: {
+    name: string;
+    slug: string;
+    icon: string;
+    description: string;
+  };
 }
 
 export interface VipPack {
@@ -144,6 +210,12 @@ export interface VipPack {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+
+  // Urgence Marketing configurable
+  urgency_active?: boolean;
+  urgency_end_date?: string; // Format ISO ou 'YYYY-MM-DDTHH:mm'
+  urgency_text?: string;
+  urgency_badge?: string;
 }
 
 export type AdminTab =

@@ -1,5 +1,6 @@
 import { api } from './api';
 import { AnalyticsEventType } from '../types';
+import { trackAnalyticsEventInFirestore } from './firestoreService';
 
 const VISITOR_ID_KEY = 'vb_visitor_id';
 
@@ -36,14 +37,24 @@ export async function trackEvent(
     const visitor_id = getVisitorId();
     const page = options.page || (typeof window !== 'undefined' ? window.location.pathname : '/');
 
-    await api.trackEvent({
-      event_type: eventType,
-      product_id: options.product_id || null,
-      lead_id: options.lead_id || null,
-      page,
-      visitor_id,
-      metadata: options.metadata || {},
-    });
+    await Promise.allSettled([
+      api.trackEvent({
+        event_type: eventType,
+        product_id: options.product_id || null,
+        lead_id: options.lead_id || null,
+        page,
+        visitor_id,
+        metadata: options.metadata || {},
+      }),
+      trackAnalyticsEventInFirestore({
+        event_type: eventType,
+        product_id: options.product_id || null,
+        lead_id: options.lead_id || null,
+        page,
+        visitor_id,
+        metadata: options.metadata || {},
+      }),
+    ]);
   } catch (err) {
     // Non-blocking for client experience
     console.debug('[Analytics] Failed to track event:', eventType, err);

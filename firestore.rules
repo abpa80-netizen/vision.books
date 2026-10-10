@@ -1,0 +1,94 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'barkissac80@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email != null && exists(/databases/$(database)/documents/admins/$(request.auth.token.email)))
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // 1. Admins collection
+    match /admins/{adminId} {
+      allow read: if isSignedIn() && (request.auth.uid == adminId || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // 2. Products collection
+    match /products/{productId} {
+      allow read: if (resource == null || resource.data.is_active == true) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // 3. Categories collection
+    match /categories/{categoryId} {
+      allow read: if (resource == null || resource.data.is_active == true) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // 4. Lead Magnets collection
+    match /lead_magnets/{leadMagnetId} {
+      allow read: if (resource == null || resource.data.active == true) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // 5. Leads collection (Confidentiality: Public can create, only admin can read/manage)
+    match /leads/{leadId} {
+      allow create: if (request.resource.data.first_name is string &&
+                       request.resource.data.first_name.size() > 0 &&
+                       request.resource.data.first_name.size() <= 128 &&
+                       request.resource.data.whatsapp is string &&
+                       request.resource.data.whatsapp.size() >= 8 &&
+                       request.resource.data.whatsapp.size() <= 64) || isAdmin();
+      allow read, update, delete: if isAdmin();
+    }
+
+    // 6. Testimonials collection
+    match /testimonials/{testimonialId} {
+      allow read: if (resource == null || resource.data.is_active == true) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // 7. Blog Posts collection
+    match /blog_posts/{postId} {
+      allow read: if (resource == null || resource.data.is_published == true) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // 8. Settings collection
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 9. Analytics collection
+    match /analytics/{eventId} {
+      allow create: if request.resource.data.event_type is string &&
+                       request.resource.data.page is string;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // 10. VIP Packs collection
+    match /vip_packs/{vipPackId} {
+      allow read: if (resource == null || resource.data.is_active == true) || isAdmin();
+      allow write: if isAdmin();
+    }
+  }
+}

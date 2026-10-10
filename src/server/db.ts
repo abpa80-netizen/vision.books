@@ -160,14 +160,92 @@ export function initDatabase() {
   try {
     db.exec('ALTER TABLE products ADD COLUMN product_details TEXT DEFAULT ""');
   } catch {}
+  try {
+    db.exec('ALTER TABLE products ADD COLUMN format TEXT DEFAULT "audiobook"');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE products ADD COLUMN urgency_active INTEGER DEFAULT 0');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE products ADD COLUMN urgency_end_date TEXT DEFAULT ""');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE products ADD COLUMN urgency_text TEXT DEFAULT ""');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE products ADD COLUMN urgency_badge TEXT DEFAULT ""');
+  } catch {}
 
-  // Migrate lead_magnets table to include subtitle & marketing_content
+  // Migrate lead_magnets table to include subtitle & marketing_content & format & marketing fields
   try {
     db.exec('ALTER TABLE lead_magnets ADD COLUMN subtitle TEXT DEFAULT ""');
   } catch {}
   try {
     db.exec('ALTER TABLE lead_magnets ADD COLUMN marketing_content TEXT DEFAULT ""');
   } catch {}
+  try {
+    db.exec('ALTER TABLE lead_magnets ADD COLUMN format TEXT DEFAULT "ebook"');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE lead_magnets ADD COLUMN topic TEXT DEFAULT ""');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE lead_magnets ADD COLUMN target_audience TEXT DEFAULT ""');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE lead_magnets ADD COLUMN raw_content TEXT DEFAULT ""');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE lead_magnets ADD COLUMN hook TEXT DEFAULT ""');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE lead_magnets ADD COLUMN key_points TEXT DEFAULT "[]"');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE lead_magnets ADD COLUMN visitor_content TEXT DEFAULT ""');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE lead_magnets ADD COLUMN short_pitch TEXT DEFAULT ""');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE lead_magnets ADD COLUMN cta_text TEXT DEFAULT ""');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE lead_magnets ADD COLUMN share_caption TEXT DEFAULT ""');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE lead_magnets ADD COLUMN social_post TEXT DEFAULT ""');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE lead_magnets ADD COLUMN landing_text TEXT DEFAULT ""');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE lead_magnets ADD COLUMN curiosity_hook TEXT DEFAULT ""');
+  } catch {}
+
+  // Migrate vip_packs table to include urgency fields
+  try {
+    db.exec('ALTER TABLE vip_packs ADD COLUMN urgency_active INTEGER DEFAULT 0');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE vip_packs ADD COLUMN urgency_end_date TEXT DEFAULT ""');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE vip_packs ADD COLUMN urgency_text TEXT DEFAULT ""');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE vip_packs ADD COLUMN urgency_badge TEXT DEFAULT ""');
+  } catch {}
+
+  // Migrate leads table to include follow-up sequence J1, J2, J3
+  try { db.exec('ALTER TABLE leads ADD COLUMN followup_j1 TEXT DEFAULT ""'); } catch {}
+  try { db.exec('ALTER TABLE leads ADD COLUMN followup_j2 TEXT DEFAULT ""'); } catch {}
+  try { db.exec('ALTER TABLE leads ADD COLUMN followup_j3 TEXT DEFAULT ""'); } catch {}
+  try { db.exec('ALTER TABLE leads ADD COLUMN followup_generated_at TEXT DEFAULT ""'); } catch {}
+  try { db.exec('ALTER TABLE leads ADD COLUMN followup_updated_at TEXT DEFAULT ""'); } catch {}
+  try { db.exec('ALTER TABLE leads ADD COLUMN followup_status_j1 TEXT DEFAULT "a_envoyer"'); } catch {}
+  try { db.exec('ALTER TABLE leads ADD COLUMN followup_status_j2 TEXT DEFAULT "a_envoyer"'); } catch {}
+  try { db.exec('ALTER TABLE leads ADD COLUMN followup_status_j3 TEXT DEFAULT "a_envoyer"'); } catch {}
 
   seedInitialData();
 }

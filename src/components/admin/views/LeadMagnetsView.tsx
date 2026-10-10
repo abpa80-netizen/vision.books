@@ -14,11 +14,15 @@ import {
   Power,
   Copy,
   Sparkles,
+  BookOpen,
+  Headphones,
+  Package,
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
-import { LeadMagnet } from '../../../types';
+import { LeadMagnet, LeadMagnetMarketingContent } from '../../../types';
 import { ImageUploader } from '../ImageUploader';
 import { FileUploader } from '../FileUploader';
+import { LeadMagnetAiGeneratorModal } from './LeadMagnetAiGeneratorModal';
 
 export const LeadMagnetsView: React.FC = () => {
   const {
@@ -35,6 +39,7 @@ export const LeadMagnetsView: React.FC = () => {
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLm, setEditingLm] = useState<LeadMagnet | null>(null);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -47,6 +52,12 @@ export const LeadMagnetsView: React.FC = () => {
     benefitsText: '',
     file_url: '/downloads/guide-visionbooks.pdf',
     active: true,
+    format: 'ebook' as 'ebook' | 'audiobook' | 'other',
+    topic: '',
+    target_audience: '',
+    raw_content: '',
+    hook: '',
+    cta_text: '',
   });
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -72,6 +83,12 @@ export const LeadMagnetsView: React.FC = () => {
       benefitsText: 'Guide stratégique complet et prêt à l\'emploi\nModèles mentaux et erreurs à éviter\nTemplate actionnable inclus',
       file_url: '/downloads/ressource-gratuite.pdf',
       active: true,
+      format: 'ebook',
+      topic: '',
+      target_audience: 'Entrepreneurs, investisseurs et cadres ambitieux',
+      raw_content: '',
+      hook: '',
+      cta_text: 'Télécharger gratuitement',
     });
     setIsModalOpen(true);
   };
@@ -88,8 +105,27 @@ export const LeadMagnetsView: React.FC = () => {
       benefitsText: Array.isArray(lm.benefits) ? lm.benefits.join('\n') : (lm.benefits || ''),
       file_url: lm.file_url || '/downloads/ressource.pdf',
       active: lm.active !== false,
+      format: (lm.format as any) || 'ebook',
+      topic: lm.topic || lm.title || '',
+      target_audience: lm.target_audience || 'Entrepreneurs et investisseurs',
+      raw_content: lm.raw_content || '',
+      hook: lm.hook || '',
+      cta_text: lm.cta_text || 'Télécharger gratuitement',
     });
     setIsModalOpen(true);
+  };
+
+  const handleApplyAiContent = (content: Partial<LeadMagnetMarketingContent> & { benefits?: string[] }) => {
+    setFormData((prev) => ({
+      ...prev,
+      title: content.title || prev.title,
+      subtitle: content.subtitle || prev.subtitle,
+      description: content.description || prev.description,
+      benefitsText: content.benefits ? content.benefits.join('\n') : prev.benefitsText,
+      marketing_content: content.visitor_content || content.landing_text || prev.marketing_content,
+      hook: content.hook || prev.hook,
+      cta_text: content.cta_text || prev.cta_text,
+    }));
   };
 
   const handleTitleChange = (newTitle: string) => {

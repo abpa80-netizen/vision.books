@@ -7,8 +7,37 @@ import {
   INITIAL_BLOG_POSTS,
   INITIAL_LEADS,
   INITIAL_LEAD_MAGNETS,
+  INITIAL_VIP_PACK,
 } from '../data/initialData';
 import { api } from '../services/api';
+import { useAuth } from './AuthContext';
+import {
+  subscribeProducts,
+  saveProductToFirestore,
+  deleteProductFromFirestore,
+  subscribeCategories,
+  saveCategoryToFirestore,
+  deleteCategoryFromFirestore,
+  subscribeLeadMagnets,
+  saveLeadMagnetToFirestore,
+  deleteLeadMagnetFromFirestore,
+  subscribeLeads,
+  getLeadsFromFirestore,
+  createLeadInFirestore,
+  updateLeadInFirestore,
+  deleteLeadFromFirestore,
+  subscribeTestimonials,
+  saveTestimonialToFirestore,
+  deleteTestimonialFromFirestore,
+  subscribeBlogPosts,
+  saveBlogPostToFirestore,
+  deleteBlogPostFromFirestore,
+  subscribeSettings,
+  saveSettingToFirestore,
+  subscribeVipPack,
+  saveVipPackToFirestore,
+  seedFirestoreIfEmpty,
+} from '../services/firestoreService';
 
 interface Toast {
   id: string;
@@ -63,7 +92,11 @@ interface AppContextType {
 
   // Leads
   leads: Lead[];
+  isLoadingLeads: boolean;
+  leadsError: string | null;
+  refreshLeads: () => Promise<void>;
   updateLeadStatus: (id: string, status: Lead['status']) => void;
+  updateLeadData: (id: string, updates: Partial<Lead>) => Promise<void>;
   addLead: (lead: any) => Promise<{ success: boolean; download_url?: string; lead?: Lead }>;
   deleteLead: (id: string) => Promise<void>;
 
@@ -137,44 +170,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // State initialized with initial data
+  // Authentication state for RBAC permissions
+  const { isAdmin } = useAuth();
+
+  // State initialized with robust initial data (no localStorage dependency)
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [testimonials, setTestimonials] = useState<Testimonial[]>(() => {
-    try {
-      const saved = localStorage.getItem('vision_books_testimonials');
-      return saved ? JSON.parse(saved) : INITIAL_TESTIMONIALS;
-    } catch {
-      return INITIAL_TESTIMONIALS;
-    }
-  });
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>(() => {
-    try {
-      const saved = localStorage.getItem('vision_books_blog');
-      return saved ? JSON.parse(saved) : INITIAL_BLOG_POSTS;
-    } catch {
-      return INITIAL_BLOG_POSTS;
-    }
-  });
-  const [leads, setLeads] = useState<Lead[]>(() => {
-    try {
-      const saved = localStorage.getItem('vision_books_leads');
-      return saved ? JSON.parse(saved) : INITIAL_LEADS;
-    } catch {
-      return INITIAL_LEADS;
-    }
-  });
-  const [leadMagnets, setLeadMagnets] = useState<LeadMagnet[]>(() => {
-    try {
-      const saved = localStorage.getItem('vision_books_lead_magnets');
-      return saved ? JSON.parse(saved) : INITIAL_LEAD_MAGNETS;
-    } catch {
-      return INITIAL_LEAD_MAGNETS;
-    }
-  });
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(INITIAL_TESTIMONIALS);
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>(INITIAL_BLOG_POSTS);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [isLoadingLeads, setIsLoadingLeads] = useState<boolean>(true);
+  const [leadsError, setLeadsError] = useState<string | null>(null);
+  const [leadMagnets, setLeadMagnets] = useState<LeadMagnet[]>(INITIAL_LEAD_MAGNETS);
   const [activePreviewProduct, setActivePreviewProduct] = useState<Product | null>(null);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
-  const [vipPack, setVipPack] = useState<VipPack | null>(null);
+  const [vipPack, setVipPack] = useState<VipPack | null>(INITIAL_VIP_PACK);
   const [settings, setSettings] = useState<Record<string, string>>({
     whatsapp_number: '',
     platform_name: 'VISION BOOKS',
@@ -183,7 +193,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     currency: 'EUR',
   });
 
-  // Load Categories, Products, Blog & Testimonials from SQLite Database on mount
+  // Load from SQLite API for hybrid backup resilience
   const refreshData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -223,40 +233,116 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setVipPack(dbVip);
       }
     } catch (err) {
-      console.warn('Could not sync with SQLite DB on start, using local initial data:', err);
+      console.warn('Could not sync with SQLite DB on start:', err);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
+  // FIRESTORE REAL-TIME SYNCHRONIZATION & PERSISTENCE
   useEffect(() => {
+    // 1. Ensure Firestore is seeded with default documents if empty
+    seedFirestoreIfEmpty().catch((err) => console.warn('Firestore seed check:', err));
+
+    // 2. Real-time Firestore Listeners
+    const unsubProds = subscribeProducts((items) => {
+      if (items.length > 0) setProducts(items);
+    }, isAdmin);
+
+    const unsubCats = subscribeCategories((items) => {
+      if (items.length > 0) setCategories(items);
+    }, isAdmin);
+
+    const unsubLms = subscribeLeadMagnets((items) => {
+      if (items.length > 0) setLeadMagnets(items);
+    }, isAdmin);
+
+    const unsubTestis = subscribeTestimonials((items) => {
+      if (items.length > 0) setTestimonials(items);
+    }, isAdmin);
+
+    const unsubBlog = subscribeBlogPosts((items) => {
+      if (items.length > 0) setBlogPosts(items);
+    }, isAdmin);
+
+    const unsubSettings = subscribeSettings((map) => {
+      if (Object.keys(map).length > 0) {
+        setSettings((prev) => ({ ...prev, ...map }));
+      }
+    });
+
+    const unsubVip = subscribeVipPack((vip) => {
+      if (vip) setVipPack(vip);
+    });
+
+    let unsubLeads = () => {};
+    if (isAdmin) {
+      setIsLoadingLeads(true);
+      setLeadsError(null);
+      unsubLeads = subscribeLeads(
+        async (items) => {
+          setLeads(items);
+          setIsLoadingLeads(false);
+          setLeadsError(null);
+
+          // If Firestore collection has 0 leads, seed existing SQLite leads once so previous work is not lost
+          if (items.length === 0) {
+            try {
+              const existingDbLeads = await api.getLeads().catch(() => []);
+              if (Array.isArray(existingDbLeads) && existingDbLeads.length > 0) {
+                console.log(`[Firestore] Initial sync of ${existingDbLeads.length} existing leads to Firestore...`);
+                for (const el of existingDbLeads) {
+                  await createLeadInFirestore(el).catch(() => {});
+                }
+              }
+            } catch (syncErr) {
+              console.warn('Sync SQLite leads notice:', syncErr);
+            }
+          }
+        },
+        (err) => {
+          console.error('[Firestore] subscribeLeads error:', err);
+          setLeadsError('Erreur de lecture Firestore : permissions insuffisantes ou réseau.');
+          setIsLoadingLeads(false);
+        }
+      );
+    } else {
+      setIsLoadingLeads(false);
+    }
+
+    // 3. Initial pull from API
     refreshData();
-  }, [refreshData]);
 
-  // Persistence side effects for secondary resources
-  useEffect(() => {
-    try {
-      localStorage.setItem('vision_books_testimonials', JSON.stringify(testimonials));
-    } catch {}
-  }, [testimonials]);
+    return () => {
+      unsubProds();
+      unsubCats();
+      unsubLms();
+      unsubTestis();
+      unsubBlog();
+      unsubSettings();
+      unsubVip();
+      unsubLeads();
+    };
+  }, [isAdmin, refreshData]);
 
-  useEffect(() => {
+  // Explicit Firestore leads refresh function for /admin -> Leads
+  const refreshLeads = useCallback(async () => {
+    if (!isAdmin) {
+      setIsLoadingLeads(false);
+      return;
+    }
+    setIsLoadingLeads(true);
+    setLeadsError(null);
     try {
-      localStorage.setItem('vision_books_blog', JSON.stringify(blogPosts));
-    } catch {}
-  }, [blogPosts]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('vision_books_leads', JSON.stringify(leads));
-    } catch {}
-  }, [leads]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('vision_books_lead_magnets', JSON.stringify(leadMagnets));
-    } catch {}
-  }, [leadMagnets]);
+      const items = await getLeadsFromFirestore();
+      setLeads(items);
+    } catch (err: any) {
+      console.error('Failed to load leads from Firestore:', err);
+      setLeadsError(err.message || 'Impossible de charger les prospects depuis Firestore.');
+    } finally {
+      setIsLoadingLeads(false);
+    }
+  }, [isAdmin]);
 
   // ----------------------------------------------------
   // CATEGORY DATABASE ACTIONS
@@ -576,63 +662,166 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateLeadStatus = (id: string, status: Lead['status']) => {
+  const updateLeadStatus = async (id: string, status: Lead['status']): Promise<void> => {
     setLeads((prev) =>
       prev.map((l) => (l.id === id ? { ...l, status } : l))
     );
-    showToast('Statut du lead mis à jour.');
+    try {
+      await updateLeadInFirestore(id, { status });
+      showToast('Statut du prospect mis à jour dans Firestore.', 'success');
+    } catch (e) {
+      console.warn('Could not update status in Firestore:', e);
+    }
+  };
+
+  const updateLeadData = async (id: string, updates: Partial<Lead>): Promise<void> => {
+    // 1. Optimistic local update
+    setLeads((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, ...updates } : l))
+    );
+
+    // 2. Persist in Firestore with write confirmation
+    try {
+      await updateLeadInFirestore(id, updates);
+    } catch (e: any) {
+      console.error('[Firestore] Échec de mise à jour du prospect:', e);
+      showToast('Erreur lors de la sauvegarde du prospect dans Firestore.', 'error');
+      throw e;
+    }
+
+    // 3. Persist in SQLite DB as dual layer
+    try {
+      await api.updateLead(id, updates);
+    } catch (e) {
+      console.warn('Could not update lead in SQLite:', e);
+    }
   };
 
   const addLead = async (leadData: any): Promise<{ success: boolean; download_url?: string; lead?: Lead }> => {
-    const firstName = leadData.first_name || leadData.name || '';
-    const whatsapp = leadData.whatsapp || leadData.phone || '';
+    const firstName = String(leadData.first_name || leadData.name || '').trim();
+    const whatsapp = String(leadData.whatsapp || leadData.phone || '').trim();
     const leadMagnetId = leadData.lead_magnet_id || null;
     const source = leadData.source || 'Page de capture';
 
+    if (!firstName) {
+      const err = new Error('Le prénom est obligatoire pour enregistrer le prospect.');
+      showToast(err.message, 'error');
+      throw err;
+    }
+
+    const digits = whatsapp.replace(/[^0-9]/g, '');
+    if (digits.length < 8) {
+      const err = new Error('Veuillez renseigner un numéro WhatsApp valide avec indicatif pays (au moins 8 chiffres).');
+      showToast(err.message, 'error');
+      throw err;
+    }
+
+    // Accidental duplicate prevention:
+    // If the exact same contact already requested the exact same lead magnet, avoid duplicate creation while still providing download
+    const existingDup = leads.find((l) => {
+      const lDigits = (l.whatsapp || l.phone || '').replace(/[^0-9]/g, '');
+      const lName = (l.first_name || l.name || '').trim().toLowerCase();
+      return (
+        lDigits === digits &&
+        lName === firstName.toLowerCase() &&
+        l.lead_magnet_id === leadMagnetId
+      );
+    });
+
+    const lm = leadMagnets.find((m) => m.id === leadMagnetId);
+    let downloadUrl = lm?.file_url || lm?.download_url || '/downloads/guide-visionbooks.pdf';
+    const leadMagnetTitle = lm?.title || leadData.lead_magnet_title || 'Guide offert';
+
+    if (existingDup) {
+      showToast('Votre accès a déjà été validé ! Téléchargement prêt.', 'info');
+      return { success: true, download_url: downloadUrl, lead: existingDup };
+    }
+
+    // 1. Stable, collision-free Firestore ID
+    const stableId = leadData.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    const now = new Date();
+    const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    const leadPayload: Partial<Lead> = {
+      id: stableId,
+      first_name: firstName,
+      whatsapp,
+      lead_magnet_id: leadMagnetId,
+      lead_magnet_title: leadMagnetTitle,
+      source,
+      created_at: formattedDate,
+      date: formattedDate.split(' ')[0],
+      time: formattedDate.split(' ')[1] || '00:00',
+      status: 'nouveau',
+      name: firstName,
+      phone: whatsapp,
+      createdAt: formattedDate,
+      followup_j1: leadData.followup_j1 || '',
+      followup_j2: leadData.followup_j2 || '',
+      followup_j3: leadData.followup_j3 || '',
+      followup_generated_at: leadData.followup_generated_at || '',
+      followup_updated_at: leadData.followup_updated_at || '',
+      followup_status_j1: leadData.followup_status_j1 || 'a_envoyer',
+      followup_status_j2: leadData.followup_status_j2 || 'a_envoyer',
+      followup_status_j3: leadData.followup_status_j3 || 'a_envoyer',
+    };
+
+    // 2. CRITICAL : Enregistrement Firestore avec attente de confirmation
+    let savedLead: Lead;
+    try {
+      savedLead = await createLeadInFirestore(leadPayload);
+    } catch (firestoreErr: any) {
+      console.error('[Firestore] Échec critique d\'enregistrement du prospect:', firestoreErr);
+      const userMsg = 'Impossible d\'enregistrer le prospect dans Firestore. Vérifiez votre connexion et vos permissions.';
+      showToast(userMsg, 'error');
+      throw new Error(userMsg);
+    }
+
+    // 3. Persistance secondaire SQLite
     try {
       const res = await api.createLead({
+        id: stableId,
         first_name: firstName,
         whatsapp,
         lead_magnet_id: leadMagnetId,
         source,
       });
-
-      if (res.lead) {
-        setLeads((prev) => [res.lead, ...prev.filter((l) => l.id !== res.lead.id)]);
+      if (res.download_url) {
+        downloadUrl = res.download_url;
       }
-      showToast('Votre accès au Lead Magnet a été validé avec succès !');
-      return { success: true, download_url: res.download_url, lead: res.lead };
-    } catch (err: any) {
-      // Fallback local
-      const now = new Date();
-      const formatted = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      const newLead: Lead = {
-        id: `lead-${Date.now()}`,
-        first_name: firstName,
-        whatsapp,
-        lead_magnet_id: leadMagnetId,
-        source,
-        created_at: formatted,
-        name: firstName,
-        phone: whatsapp,
-        createdAt: formatted,
-        status: 'nouveau',
-      };
-      setLeads((prev) => [newLead, ...prev]);
-      showToast('Votre accès au Lead Magnet a été validé !');
-      return { success: true, download_url: '/downloads/guide-visionbooks.pdf', lead: newLead };
+    } catch (sqliteErr) {
+      console.warn('Dual-layer SQLite sync notice:', sqliteErr);
     }
+
+    // 4. Mise à jour de l'état local
+    setLeads((prev) => [savedLead, ...prev.filter((l) => l.id !== savedLead.id)]);
+    showToast('Prospect enregistré avec succès dans Firestore !', 'success');
+
+    return { success: true, download_url: downloadUrl, lead: savedLead };
   };
 
-  const deleteLead = async (id: string) => {
+  const deleteLead = async (id: string): Promise<void> => {
+    // 1. Optimistic removal
+    setLeads((prev) => prev.filter((l) => l.id !== id));
+
+    // 2. Suppression dans Firestore
+    try {
+      await deleteLeadFromFirestore(id);
+    } catch (e: any) {
+      console.error('Could not delete lead from Firestore:', e);
+      showToast('Erreur lors de la suppression du prospect dans Firestore.', 'error');
+      await refreshLeads().catch(() => {});
+      throw e;
+    }
+
+    // 3. Suppression dans SQLite
     try {
       await api.deleteLead(id);
-      setLeads((prev) => prev.filter((l) => l.id !== id));
-      showToast('Prospect supprimé de la base.');
-    } catch {
-      setLeads((prev) => prev.filter((l) => l.id !== id));
-      showToast('Prospect retiré.');
+    } catch (e) {
+      console.warn('Could not delete lead from SQLite:', e);
     }
+
+    showToast('Prospect supprimé de la base de données.', 'info');
   };
 
   const toggleLeadMagnetStatus = async (id: string) => {
@@ -789,7 +978,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleBlogPostStatus,
         deleteBlogPost,
         leads,
+        isLoadingLeads,
+        leadsError,
+        refreshLeads,
         updateLeadStatus,
+        updateLeadData,
         addLead,
         deleteLead,
         leadMagnets,

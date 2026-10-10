@@ -1,4 +1,4 @@
-import { Category, Product, Testimonial, BlogPost, Lead, LeadMagnet } from '../types';
+import { Category, Product, Testimonial, BlogPost, Lead, LeadMagnet, VipPack } from '../types';
 
 export const INITIAL_CATEGORIES: Category[] = [
   {
@@ -514,3 +514,25 @@ export const INITIAL_LEAD_MAGNETS: LeadMagnet[] = [
     associatedCategory: 'Mindset & Motivation',
   },
 ];
+
+export const INITIAL_VIP_PACK: VipPack = {
+  id: 'pack-vip-elite',
+  title: 'Pack VIP — La Bibliothèque Privée des Dirigeants',
+  subtitle: 'Accès immédiat et illimité à l\'intégralité des 6 masterclasses audio, synthèses exécutives et bonus confidentiels.',
+  image: '/src/assets/images/cover_business_empire_1790615532791.jpg',
+  normal_price: 149.00,
+  sale_price: 79.00,
+  description: 'Un investissement unique pour acquérir les modèles mentaux des plus grands stratèges et investisseurs mondiaux. Sans abonnement, écoute à vie.',
+  content: JSON.stringify([
+    "Les 6 Livres Audio Intégraux en Haute Définition Studio (320 kbps)",
+    "Fiches Mémos & Plans d'Action Exécutifs condensés en format PDF",
+    "Scripts confidentiels de vente et modèles de négociation à haute valeur",
+    "Mises à jour gratuites et accès prioritaire aux futures parutions",
+    "Assistance et conciergerie privée sur WhatsApp"
+  ]),
+  cta_text: 'Commander le Pack VIP sur WhatsApp',
+  show_on_home: true,
+  is_active: true,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+};

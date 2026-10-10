@@ -25,9 +25,13 @@ import {
   RefreshCw,
   Copy,
   Lock,
+  Headphones,
+  Package,
+  Flame,
+  Tag,
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
-import { Product } from '../../../types';
+import { Product, CategorySuggestion } from '../../../types';
 import { api } from '../../../services/api';
 import { ImageUploader } from '../ImageUploader';
 
@@ -40,6 +44,7 @@ export const ProductsView: React.FC = () => {
     toggleProductActive,
     toggleProductBestSeller,
     deleteProduct,
+    addCategory,
     showToast,
   } = useApp();
 
@@ -73,6 +78,15 @@ export const ProductsView: React.FC = () => {
   const [isBestSeller, setIsBestSeller] = useState(false);
   const [isActive, setIsActive] = useState(true);
 
+  // Format du contenu (Livre audio 🎧, Ebook 📚, Autre format 📦)
+  const [format, setFormat] = useState<'audiobook' | 'ebook' | 'other'>('audiobook');
+
+  // Urgence Marketing configurable
+  const [urgencyActive, setUrgencyActive] = useState(false);
+  const [urgencyEndDate, setUrgencyEndDate] = useState('');
+  const [urgencyText, setUrgencyText] = useState('');
+  const [urgencyBadge, setUrgencyBadge] = useState('Offre limitée');
+
   const handleCopyLink = (textToCopy: string, successMsg = 'Lien copié dans le presse-papier !') => {
     if (!textToCopy) {
       showToast('Aucun lien à copier.', 'error');
@@ -91,6 +105,8 @@ export const ProductsView: React.FC = () => {
   const [aiAuthor, setAiAuthor] = useState('');
   const [aiCategory, setAiCategory] = useState('');
   const [aiBonus, setAiBonus] = useState('');
+  const [aiSuggestedCategory, setAiSuggestedCategory] = useState<CategorySuggestion | null>(null);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [aiGeneratedData, setAiGeneratedData] = useState<{
     full_description: string;
     key_points: string[];
@@ -153,7 +169,13 @@ export const ProductsView: React.FC = () => {
     setProductUrl('');
     setIsBestSeller(false);
     setIsActive(true);
+    setFormat('audiobook');
+    setUrgencyActive(false);
+    setUrgencyEndDate('');
+    setUrgencyText('');
+    setUrgencyBadge('Offre limitée');
     setAiGeneratedData(null);
+    setAiSuggestedCategory(null);
     setIsModalOpen(true);
   };
 
@@ -177,7 +199,13 @@ export const ProductsView: React.FC = () => {
     setProductUrl(p.product_url || '');
     setIsBestSeller(Boolean(p.is_best_seller));
     setIsActive(Boolean(p.is_active));
+    setFormat((p.format as any) || (p.audio_url ? 'audiobook' : 'ebook'));
+    setUrgencyActive(Boolean(p.urgency_active));
+    setUrgencyEndDate(p.urgency_end_date || '');
+    setUrgencyText(p.urgency_text || '');
+    setUrgencyBadge(p.urgency_badge || 'Offre limitée');
     setAiGeneratedData(null);
+    setAiSuggestedCategory(null);
     setIsModalOpen(true);
   };
 
@@ -187,10 +215,11 @@ export const ProductsView: React.FC = () => {
     setAiAuthor(author);
     setAiCategory(category);
     setAiBonus(bonus);
+    setAiSuggestedCategory(null);
     setIsAiModalOpen(true);
   };
 
-  // Launch AI copywriting generation with Gemini
+  // Launch AI copywriting generation with Gemini including category suggestion
   const handleGenerateAI = async () => {
     if (!aiTitle.trim()) {
       showToast('Veuillez renseigner le Titre du livre.', 'error');
@@ -208,7 +237,9 @@ export const ProductsView: React.FC = () => {
         author: aiAuthor.trim(),
         category: aiCategory || category,
         bonus: aiBonus.trim(),
+        existing_categories: categories.map((c) => ({ id: c.id, name: c.name, slug: c.slug })),
       });
+
       setAiGeneratedData({
         full_description: result.full_description,
         key_points: result.key_points || ['', '', ''],
@@ -216,11 +247,72 @@ export const ProductsView: React.FC = () => {
         short_description: result.short_description,
         cta_text: result.cta_text,
       });
-      showToast('Contenu généré par l\'IA avec succès ! Relisez et ajustez avant d\'appliquer.', 'success');
+
+      if (result.suggested_category) {
+        setAiSuggestedCategory(result.suggested_category);
+        // If matched existing category, pre-select it
+        if (!result.suggested_category.is_new) {
+          const match = categories.find(
+            (c) =>
+              c.slug === result.suggested_category?.slug ||
+              c.name.toLowerCase() === result.suggested_category?.name.toLowerCase()
+          );
+          if (match) {
+            setAiCategory(match.slug);
+          }
+        }
+      }
+
+      showToast('Contenu généré par l\'IA avec succès ! Relisez et confirmez la catégorie avant d\'appliquer.', 'success');
     } catch (err: any) {
       showToast(err.message || 'Erreur lors de la génération IA', 'error');
     } finally {
       setIsAiGenerating(false);
+    }
+  };
+
+  // Handle explicit creation of a new category proposed by AI
+  const handleCreateSuggestedCategory = async () => {
+    if (!aiSuggestedCategory || !aiSuggestedCategory.new_category_details) return;
+    const details = aiSuggestedCategory.new_category_details;
+    const catName = details.name.trim();
+    if (!catName) return;
+
+    // Duplicate check
+    const existingCat = categories.find(
+      (c) =>
+        c.name.toLowerCase() === catName.toLowerCase() ||
+        c.slug.toLowerCase() === (details.slug || '').toLowerCase()
+    );
+    if (existingCat) {
+      setAiCategory(existingCat.slug);
+      showToast(`La catégorie "${existingCat.name}" existe déjà et a été sélectionnée.`, 'info');
+      return;
+    }
+
+    setIsCreatingCategory(true);
+    try {
+      const created = await addCategory({
+        name: catName,
+        slug: details.slug || catName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        icon: details.icon || '📁',
+        description: details.description || `Catégorie dédiée : ${catName}`,
+        is_active: true,
+      });
+      setAiCategory(created.slug);
+      setCategory(created.slug);
+      setAiSuggestedCategory({
+        ...aiSuggestedCategory,
+        is_new: false,
+        name: created.name,
+        slug: created.slug,
+        rationale: 'Catégorie créée avec succès dans VISION BOOKS et sélectionnée.',
+      });
+      showToast(`Nouvelle catégorie "${created.name}" créée et enregistrée avec succès !`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Erreur lors de la création de la catégorie', 'error');
+    } finally {
+      setIsCreatingCategory(false);
     }
   };
 
@@ -287,6 +379,11 @@ export const ProductsView: React.FC = () => {
       product_url: productUrl.trim() || `/produits/${slug}`,
       is_best_seller: isBestSeller,
       is_active: isActive,
+      format: format,
+      urgency_active: urgencyActive,
+      urgency_end_date: urgencyEndDate,
+      urgency_text: urgencyText.trim(),
+      urgency_badge: urgencyBadge.trim(),
     };
 
     if (editingProduct) {
@@ -382,7 +479,8 @@ export const ProductsView: React.FC = () => {
           <table className="w-full text-left text-xs">
             <thead className="border-b border-neutral-800 bg-neutral-950 text-neutral-400">
               <tr>
-                <th className="py-3.5 pl-6 pr-3 font-semibold">Livre Audio</th>
+                <th className="py-3.5 pl-6 pr-3 font-semibold">Produit</th>
+                <th className="px-3 py-3.5 font-semibold text-center">Format</th>
                 <th className="px-3 py-3.5 font-semibold">Catégorie</th>
                 <th className="px-3 py-3.5 font-semibold">Tarification (Normal / Promo)</th>
                 <th className="px-3 py-3.5 font-semibold text-center">Best-Seller</th>
@@ -395,6 +493,10 @@ export const ProductsView: React.FC = () => {
               {filteredProducts.length > 0 ? (
                 filteredProducts.map((p) => {
                   const hasPromo = p.sale_price !== null && p.sale_price !== undefined && p.sale_price < p.normal_price;
+                  const isUrgent = Boolean(
+                    p.urgency_active &&
+                    (!p.urgency_end_date || new Date(p.urgency_end_date) > new Date())
+                  );
                   return (
                     <tr key={p.id} className="hover:bg-neutral-900/60 transition-colors">
                       {/* Product cover & title */}
@@ -410,11 +512,39 @@ export const ProductsView: React.FC = () => {
                             }}
                           />
                           <div className="min-w-0">
-                            <div className="font-semibold text-white truncate max-w-xs">{p.title}</div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-semibold text-white truncate max-w-xs">{p.title}</span>
+                              {isUrgent && (
+                                <span className="inline-flex items-center gap-1 rounded bg-red-500/15 border border-red-500/30 px-1.5 py-0.5 text-[9px] font-bold text-red-300 shrink-0">
+                                  <Flame className="h-2.5 w-2.5 text-red-400" />
+                                  <span>{p.urgency_badge || 'Offre limitée'}</span>
+                                </span>
+                              )}
+                            </div>
                             <div className="text-[11px] text-neutral-400 truncate">Par {p.author}</div>
                             <div className="font-mono text-[10px] text-neutral-500 truncate">/{p.slug}</div>
                           </div>
                         </div>
+                      </td>
+
+                      {/* Format Badge */}
+                      <td className="px-3 py-4 text-center whitespace-nowrap">
+                        {p.format === 'ebook' ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/15 border border-blue-500/30 px-2 py-0.5 text-[10px] font-semibold text-blue-300">
+                            <BookOpen className="h-3 w-3 text-blue-400" />
+                            <span>Ebook 📚</span>
+                          </span>
+                        ) : p.format === 'other' ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 text-[10px] font-semibold text-purple-300">
+                            <Package className="h-3 w-3 text-purple-400" />
+                            <span>Autre 📦</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                            <Headphones className="h-3 w-3 text-amber-400" />
+                            <span>Livre audio 🎧</span>
+                          </span>
+                        )}
                       </td>
 
                       {/* Category */}
@@ -631,6 +761,39 @@ export const ProductsView: React.FC = () => {
                     </select>
                   </div>
                 </div>
+
+                {/* Format du Contenu (Obligatoire / Sélectionnable) */}
+                <div className="pt-2 border-t border-neutral-800/80">
+                  <label className="block font-medium text-neutral-300 mb-2">
+                    Format du contenu *
+                  </label>
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {[
+                      { id: 'audiobook', label: 'Livre audio 🎧', icon: Headphones, desc: 'Fichier audio & écoute' },
+                      { id: 'ebook', label: 'Ebook 📚', icon: BookOpen, desc: 'Livre numérique PDF / ePub' },
+                      { id: 'other', label: 'Autre format 📦', icon: Package, desc: 'Bundle ou masterclass' },
+                    ].map((fmt) => {
+                      const Icon = fmt.icon;
+                      const isSelected = format === fmt.id;
+                      return (
+                        <button
+                          key={fmt.id}
+                          type="button"
+                          onClick={() => setFormat(fmt.id as any)}
+                          className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                            isSelected
+                              ? 'border-amber-500 bg-amber-500/10 text-white shadow-sm ring-1 ring-amber-500/50'
+                              : 'border-neutral-800 bg-neutral-950/60 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200'
+                          }`}
+                        >
+                          <Icon className={`h-4 w-4 ${isSelected ? 'text-amber-400' : 'text-neutral-500'}`} />
+                          <span className="font-semibold text-xs">{fmt.label}</span>
+                          <span className="text-[10px] text-neutral-500">{fmt.desc}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               {/* Section 2: Tarification */}
@@ -675,6 +838,77 @@ export const ProductsView: React.FC = () => {
                     </span>
                   </div>
                 </div>
+              </div>
+
+              {/* Section 2b: Urgence Commerciale & Marketing Configurable */}
+              <div className="space-y-4 rounded-xl border border-neutral-850 bg-neutral-900/30 p-4">
+                <div className="flex items-center justify-between border-b border-neutral-800/80 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Flame className={`h-4 w-4 ${urgencyActive ? 'text-red-400' : 'text-neutral-500'}`} />
+                    <span className="text-xs font-bold uppercase tracking-wider text-neutral-300">
+                      Urgence Marketing (Optionnel)
+                    </span>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={urgencyActive}
+                      onChange={(e) => setUrgencyActive(e.target.checked)}
+                      className="h-4 w-4 rounded border-neutral-700 bg-neutral-950 text-amber-500 focus:ring-amber-500"
+                    />
+                    <span className="text-xs font-semibold text-neutral-200">
+                      {urgencyActive ? 'Urgence active' : 'Désactivée'}
+                    </span>
+                  </label>
+                </div>
+
+                {urgencyActive && (
+                  <div className="space-y-3.5 pt-1">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="block font-medium text-neutral-300">
+                          Badge Promotionnel
+                        </label>
+                        <input
+                          type="text"
+                          value={urgencyBadge}
+                          onChange={(e) => setUrgencyBadge(e.target.value)}
+                          placeholder="Ex : Offre de lancement • Vente Flash"
+                          className="mt-1.5 w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3.5 py-2 text-white placeholder-neutral-500 focus:border-amber-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-medium text-neutral-300">
+                          Date et Heure de Fin (Expiration)
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={urgencyEndDate}
+                          onChange={(e) => setUrgencyEndDate(e.target.value)}
+                          className="mt-1.5 w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3.5 py-2 text-white focus:border-amber-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block font-medium text-neutral-300">
+                        Texte d'Urgence Commerciale
+                      </label>
+                      <input
+                        type="text"
+                        value={urgencyText}
+                        onChange={(e) => setUrgencyText(e.target.value)}
+                        placeholder="Ex : Tarif préférentiel garanti jusqu'à expiration de l'offre"
+                        className="mt-1.5 w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3.5 py-2 text-white placeholder-neutral-500 focus:border-amber-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <p className="text-[11px] leading-relaxed text-neutral-400 bg-neutral-950/60 p-2.5 rounded-lg border border-neutral-850">
+                      ℹ️ <strong>Règle éthique :</strong> Le badge et le message d'urgence ne s'affichent que si l'offre est active et que la date limite n'est pas dépassée. À expiration, ils sont automatiquement masqués du site sans fausse rareté ni manipulation de prix.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Section 3: Visuel & Médias */}
@@ -1176,8 +1410,92 @@ export const ProductsView: React.FC = () => {
                     <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                     <span>Contenus Générés • Modifiables avant application</span>
                   </div>
-                  <span className="text-[10px] text-neutral-400">5 éléments générés</span>
+                  <span className="text-[10px] text-neutral-400">Contenu & Catégorie</span>
                 </div>
+
+                {/* PROPOSITION DE CATÉGORIE PAR L'IA */}
+                {aiSuggestedCategory && (
+                  <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Tag className="h-4 w-4 text-amber-400" />
+                        <span className="font-bold text-amber-300 text-xs uppercase tracking-wider">
+                          Recommandation de Catégorie par l'IA
+                        </span>
+                      </div>
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        aiSuggestedCategory.is_new
+                          ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
+                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      }`}>
+                        {aiSuggestedCategory.is_new ? 'Nouvelle Catégorie Proposée' : 'Catégorie Existante Recommandée'}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-neutral-950/70 p-3 rounded-lg border border-neutral-800">
+                      <div>
+                        <div className="font-bold text-white text-sm flex items-center gap-2">
+                          <span>{aiSuggestedCategory.name}</span>
+                          {aiSuggestedCategory.new_category_details?.icon && (
+                            <span>{aiSuggestedCategory.new_category_details.icon}</span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-neutral-400 mt-0.5">
+                          {aiSuggestedCategory.rationale}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {aiSuggestedCategory.is_new ? (
+                          <button
+                            type="button"
+                            onClick={handleCreateSuggestedCategory}
+                            disabled={isCreatingCategory}
+                            className="flex items-center gap-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 px-3.5 py-1.5 text-xs font-bold text-white transition-all shadow-sm cursor-pointer"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            <span>{isCreatingCategory ? 'Création...' : 'Créer et associer'}</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const match = categories.find(
+                                (c) =>
+                                  c.slug === aiSuggestedCategory.slug ||
+                                  c.name.toLowerCase() === aiSuggestedCategory.name.toLowerCase()
+                              );
+                              if (match) {
+                                setAiCategory(match.slug);
+                                setCategory(match.slug);
+                                showToast(`Catégorie "${match.name}" confirmée et sélectionnée !`, 'success');
+                              }
+                            }}
+                            className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3.5 py-1.5 text-xs font-bold text-white transition-all shadow-sm cursor-pointer"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                            <span>Confirmer la catégorie</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1 text-[11px] text-neutral-400">
+                      <span className="font-medium text-neutral-300">Catégorie finale choisie :</span>
+                      <select
+                        value={aiCategory}
+                        onChange={(e) => setAiCategory(e.target.value)}
+                        className="rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-1 text-xs text-white focus:border-amber-500 focus:outline-none"
+                      >
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.slug}>
+                            {c.icon} {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
 
                 {/* 1. Description commerciale captivante */}
                 <div>

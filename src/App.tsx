@@ -1,4 +1,5 @@
 import React from 'react';
+import { AuthProvider } from './context/AuthContext';
 import { AppProvider, useApp } from './context/AppContext';
 import { PublicPage } from './components/public/PublicPage';
 import { CatalogPage } from './components/public/CatalogPage';
@@ -9,6 +10,7 @@ import { LeadMagnetCapturePage } from './components/public/LeadMagnetCapturePage
 import { ThankYouPage } from './components/public/ThankYouPage';
 import { BlogPage } from './components/public/BlogPage';
 import { BlogPostPage } from './components/public/BlogPostPage';
+import { CommercialAssistant } from './components/chat/CommercialAssistant';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 import { trackSiteVisit } from './services/analytics';
 
@@ -18,7 +20,7 @@ const ToastContainer: React.FC = () => {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none max-w-md w-full px-4 sm:px-0">
+    <div className="fixed bottom-20 right-5 z-50 flex flex-col gap-2 pointer-events-none max-w-md w-full px-4 sm:px-0">
       {toasts.map((toast) => (
         <div
           key={toast.id}
@@ -58,102 +60,68 @@ const MainRouter: React.FC = () => {
     }
   }, [currentPath]);
 
-  // Admin Route: /admin or /admin/...
-  if (currentPath.startsWith('/admin')) {
-    return (
-      <>
-        <AdminLayout />
-        <ToastContainer />
-      </>
-    );
-  }
+  // Page routing logic
+  const renderPageContent = () => {
+    // Admin Route: /admin or /admin/...
+    if (currentPath.startsWith('/admin')) {
+      return <AdminLayout />;
+    }
 
-  // Blog Post Route: /blog/[slug]
-  const blogPostMatch = currentPath.match(/^\/blog\/(.+)$/);
-  if (blogPostMatch) {
-    const rawSlug = blogPostMatch[1].split('?')[0].replace(/\/$/, '');
-    const cleanSlug = decodeURIComponent(rawSlug);
-    return (
-      <>
-        <BlogPostPage slug={cleanSlug} />
-        <ToastContainer />
-      </>
-    );
-  }
+    // Blog Post Route: /blog/[slug]
+    const blogPostMatch = currentPath.match(/^\/blog\/(.+)$/);
+    if (blogPostMatch) {
+      const rawSlug = blogPostMatch[1].split('?')[0].replace(/\/$/, '');
+      const cleanSlug = decodeURIComponent(rawSlug);
+      return <BlogPostPage slug={cleanSlug} />;
+    }
 
-  // Blog Index Route: /blog or /blog/
-  if (currentPath === '/blog' || currentPath === '/blog/') {
-    return (
-      <>
-        <BlogPage />
-        <ToastContainer />
-      </>
-    );
-  }
+    // Blog Index Route: /blog or /blog/
+    if (currentPath === '/blog' || currentPath === '/blog/') {
+      return <BlogPage />;
+    }
 
-  // Full Catalog Route: /produits or /produits/ (without a slug)
-  if (currentPath === '/produits' || currentPath === '/produits/') {
-    return (
-      <>
-        <CatalogPage />
-        <ToastContainer />
-      </>
-    );
-  }
+    // Full Catalog Route: /produits or /produits/ (without a slug)
+    if (currentPath === '/produits' || currentPath === '/produits/') {
+      return <CatalogPage />;
+    }
 
-  // Single Product Route: /produit/[slug] (also accepts /produits/[slug])
-  const productMatch = currentPath.match(/^\/produits?\/(.+)$/);
-  if (productMatch) {
-    const rawSlug = productMatch[1].split('?')[0].replace(/\/$/, '');
-    const cleanSlug = decodeURIComponent(rawSlug);
-    return (
-      <>
-        <ProductDetailPage slug={cleanSlug} />
-        <ToastContainer />
-      </>
-    );
-  }
+    // Single Product Route: /produit/[slug] (also accepts /produits/[slug])
+    const productMatch = currentPath.match(/^\/produits?\/(.+)$/);
+    if (productMatch) {
+      const rawSlug = productMatch[1].split('?')[0].replace(/\/$/, '');
+      const cleanSlug = decodeURIComponent(rawSlug);
+      return <ProductDetailPage slug={cleanSlug} />;
+    }
 
-  // Category Route: /categorie/[slug] (also accepts /categories/[slug])
-  const categoryMatch = currentPath.match(/^\/categories?\/(.+)$/);
-  if (categoryMatch) {
-    const rawSlug = categoryMatch[1].split('?')[0].replace(/\/$/, '');
-    const cleanSlug = decodeURIComponent(rawSlug);
-    return (
-      <>
-        <CategoryPage slug={cleanSlug} />
-        <ToastContainer />
-      </>
-    );
-  }
+    // Category Route: /categorie/[slug] (also accepts /categories/[slug])
+    const categoryMatch = currentPath.match(/^\/categories?\/(.+)$/);
+    if (categoryMatch) {
+      const rawSlug = categoryMatch[1].split('?')[0].replace(/\/$/, '');
+      const cleanSlug = decodeURIComponent(rawSlug);
+      return <CategoryPage slug={cleanSlug} />;
+    }
 
-  // Lead Magnet Capture Page: /lead-magnet/[slug] (also accepts /lead-magnets/[slug])
-  const leadMagnetMatch = currentPath.match(/^\/lead-magnets?\/(.+)$/);
-  if (leadMagnetMatch) {
-    const rawSlug = leadMagnetMatch[1].split('?')[0].replace(/\/$/, '');
-    const cleanSlug = decodeURIComponent(rawSlug);
-    return (
-      <>
-        <LeadMagnetCapturePage slug={cleanSlug} />
-        <ToastContainer />
-      </>
-    );
-  }
+    // Lead Magnet Capture Page: /lead-magnet/[slug] (also accepts /lead-magnets/[slug])
+    const leadMagnetMatch = currentPath.match(/^\/lead-magnets?\/(.+)$/);
+    if (leadMagnetMatch) {
+      const rawSlug = leadMagnetMatch[1].split('?')[0].replace(/\/$/, '');
+      const cleanSlug = decodeURIComponent(rawSlug);
+      return <LeadMagnetCapturePage slug={cleanSlug} />;
+    }
 
-  // Confirmation / Thank You Page: /merci
-  if (currentPath === '/merci' || currentPath.startsWith('/merci')) {
-    return (
-      <>
-        <ThankYouPage />
-        <ToastContainer />
-      </>
-    );
-  }
+    // Confirmation / Thank You Page: /merci
+    if (currentPath === '/merci' || currentPath.startsWith('/merci')) {
+      return <ThankYouPage />;
+    }
 
-  // Default: Homepage (Public storefront)
+    // Default: Homepage (Public storefront)
+    return <PublicPage />;
+  };
+
   return (
     <>
-      <PublicPage />
+      {renderPageContent()}
+      <CommercialAssistant />
       <ToastContainer />
     </>
   );
@@ -161,8 +129,10 @@ const MainRouter: React.FC = () => {
 
 export default function App() {
   return (
-    <AppProvider>
-      <MainRouter />
-    </AppProvider>
+    <AuthProvider>
+      <AppProvider>
+        <MainRouter />
+      </AppProvider>
+    </AuthProvider>
   );
 }

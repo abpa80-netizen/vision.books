@@ -15,6 +15,8 @@ import {
   HelpCircle,
   Check,
   ChevronDown,
+  BookOpen,
+  Package,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { LeadMagnet } from '../../types';
@@ -303,9 +305,21 @@ export const LeadMagnetCapturePage: React.FC<LeadMagnetCapturePageProps> = ({ sl
           {/* Left Column: Présentation & Contenu Marketing */}
           <div className="lg:col-span-7 space-y-8">
             {/* Header Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-amber-400">
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>Ressource Privée Téléchargeable Immédiatement</span>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Badge Format (Ebook 📚, Livre audio 🎧, Autre format 📦) */}
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-300">
+                {(() => {
+                  const fmt = (leadMagnet.format || 'ebook').toLowerCase();
+                  if (fmt === 'audiobook') return <><Headphones className="h-3.5 w-3.5 text-amber-400" /><span>Livre audio 🎧</span></>;
+                  if (fmt === 'other') return <><Package className="h-3.5 w-3.5 text-amber-400" /><span>Autre format 📦</span></>;
+                  return <><BookOpen className="h-3.5 w-3.5 text-amber-400" /><span>Ebook 📚</span></>;
+                })()}
+              </div>
+
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-amber-400">
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>Ressource Privée Téléchargeable Immédiatement</span>
+              </div>
             </div>
 
             {/* 2. Titre Accrocheur */}

@@ -15,6 +15,7 @@ import {
   Plus,
   X,
   MessageCircle,
+  Flame,
 } from 'lucide-react';
 import { useApp } from '../../../context/AppContext';
 import { ImageUploader } from '../ImageUploader';
@@ -35,6 +36,12 @@ export const VipPackView: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // Urgence Marketing configurable
+  const [urgencyActive, setUrgencyActive] = useState(false);
+  const [urgencyEndDate, setUrgencyEndDate] = useState('');
+  const [urgencyText, setUrgencyText] = useState('');
+  const [urgencyBadge, setUrgencyBadge] = useState('Offre Privilège VIP');
+
   // Sync state from context when vipPack loads or changes
   useEffect(() => {
     if (vipPack) {
@@ -47,6 +54,10 @@ export const VipPackView: React.FC = () => {
       setCtaText(vipPack.cta_text || 'Commander le Pack VIP sur WhatsApp');
       setShowOnHome(vipPack.show_on_home !== false);
       setIsActive(vipPack.is_active !== false);
+      setUrgencyActive(Boolean(vipPack.urgency_active));
+      setUrgencyEndDate(vipPack.urgency_end_date || '');
+      setUrgencyText(vipPack.urgency_text || '');
+      setUrgencyBadge(vipPack.urgency_badge || 'Offre Privilège VIP');
 
       let lines: string[] = [];
       try {
@@ -122,6 +133,10 @@ export const VipPackView: React.FC = () => {
         cta_text: ctaText.trim() || 'Commander le Pack VIP sur WhatsApp',
         show_on_home: showOnHome,
         is_active: isActive,
+        urgency_active: urgencyActive,
+        urgency_end_date: urgencyEndDate,
+        urgency_text: urgencyText.trim(),
+        urgency_badge: urgencyBadge.trim(),
       });
     } finally {
       setIsSaving(false);
@@ -281,6 +296,77 @@ export const VipPackView: React.FC = () => {
                 placeholder="Explication claire de la valeur de l'offre groupée..."
                 className="mt-1.5 w-full rounded-xl border border-neutral-800 bg-neutral-950 p-3.5 text-xs text-white placeholder-neutral-500 focus:border-amber-500 focus:outline-none"
               />
+            </div>
+
+            {/* Urgence Commerciale & Marketing Configurable pour le Pack VIP */}
+            <div className="space-y-4 rounded-2xl border border-neutral-800 bg-neutral-900/40 p-4">
+              <div className="flex items-center justify-between border-b border-neutral-800/80 pb-3">
+                <div className="flex items-center gap-2">
+                  <Flame className={`h-4 w-4 ${urgencyActive ? 'text-red-400' : 'text-neutral-500'}`} />
+                  <span className="text-xs font-bold uppercase tracking-wider text-neutral-200">
+                    Urgence Marketing du Pack VIP
+                  </span>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={urgencyActive}
+                    onChange={(e) => setUrgencyActive(e.target.checked)}
+                    className="h-4 w-4 rounded border-neutral-700 bg-neutral-950 text-amber-500 focus:ring-amber-500"
+                  />
+                  <span className="text-xs font-semibold text-neutral-300">
+                    {urgencyActive ? 'Urgence active' : 'Désactivée'}
+                  </span>
+                </label>
+              </div>
+
+              {urgencyActive && (
+                <div className="space-y-3.5 pt-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-semibold text-neutral-300">
+                        Badge promotionnel d'urgence
+                      </label>
+                      <input
+                        type="text"
+                        value={urgencyBadge}
+                        onChange={(e) => setUrgencyBadge(e.target.value)}
+                        placeholder="Ex : Offre de lancement • Vente Flash VIP"
+                        className="mt-1.5 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3.5 py-2 text-xs text-white placeholder-neutral-500 focus:border-amber-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-neutral-300">
+                        Date et Heure d'expiration (fin de l'offre)
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={urgencyEndDate}
+                        onChange={(e) => setUrgencyEndDate(e.target.value)}
+                        className="mt-1.5 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3.5 py-2 text-xs text-white focus:border-amber-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-300">
+                      Message d'urgence affiché sur le site
+                    </label>
+                    <input
+                      type="text"
+                      value={urgencyText}
+                      onChange={(e) => setUrgencyText(e.target.value)}
+                      placeholder="Ex : Offre limitée aux prochains membres • Tarif garanti jusqu'à expiration"
+                      className="mt-1.5 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3.5 py-2 text-xs text-white placeholder-neutral-500 focus:border-amber-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <p className="text-[11px] leading-relaxed text-neutral-400 bg-neutral-950/70 p-2.5 rounded-lg border border-neutral-850">
+                    ℹ️ <strong>Règle éthique :</strong> Le badge et le message d'urgence ne s'affichent sur la page d'accueil que si l'urgence est active et que la date de fin n'est pas expirée. Dès l'expiration, ils disparaissent automatiquement sans modifier le tarif configuré.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Contenu du Pack VIP (Liste des éléments inclus) */}

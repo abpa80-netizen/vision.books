@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Star, Headphones, Play, Gift } from 'lucide-react';
+import { ArrowRight, Star, Headphones, BookOpen, Package, Play, Gift, Clock, Sparkles } from 'lucide-react';
 import { Product } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { trackProductClick } from '../../services/analytics';
@@ -23,7 +23,33 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     product.sale_price < product.normal_price;
 
   const isBestSeller = Boolean(product.is_best_seller || product.isBestSeller);
-  const productUrl = `/produit/${product.slug}`;
+  const productUrl = `/produit/${product.slug || product.id}`;
+
+  // Urgence Marketing : vérification de l'activation et de la date limite
+  const isUrgencyActive = React.useMemo(() => {
+    if (!product.urgency_active) return false;
+    if (product.urgency_end_date) {
+      const end = new Date(product.urgency_end_date).getTime();
+      if (!isNaN(end) && end < Date.now()) {
+        return false; // Expiration automatique
+      }
+    }
+    return true;
+  }, [product.urgency_active, product.urgency_end_date]);
+
+  // Format du produit (Livre audio, Ebook, Autre)
+  const formatInfo = React.useMemo(() => {
+    const fmt = (product.format || 'audiobook').toLowerCase();
+    if (fmt === 'ebook') {
+      return { label: 'Ebook', icon: BookOpen, isAudio: false };
+    }
+    if (fmt === 'other') {
+      return { label: 'Autre format', icon: Package, isAudio: false };
+    }
+    return { label: 'Livre audio HD', icon: Headphones, isAudio: true };
+  }, [product.format]);
+
+  const FormatIcon = formatInfo.icon;
 
   const handleCardClick = (e: React.MouseEvent) => {
     // If the click was not on a button, navigate to the product page
@@ -55,19 +81,27 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent opacity-70" />
 
         {/* Top Badges */}
-        <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-          {/* Badge Best-Seller */}
-          {isBestSeller ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-neutral-950 shadow-md">
-              <Star className="h-3 w-3 fill-neutral-950 text-neutral-950" />
-              <span>Best-Seller</span>
-            </span>
-          ) : (
-            <div />
-          )}
+        <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2 pointer-events-none">
+          <div className="flex flex-col gap-1.5 items-start">
+            {/* Badge Best-Seller */}
+            {isBestSeller && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-neutral-950 shadow-md">
+                <Star className="h-3 w-3 fill-neutral-950 text-neutral-950" />
+                <span>Best-Seller</span>
+              </span>
+            )}
+
+            {/* Badge Urgence Promotionnelle si configurée et active */}
+            {isUrgencyActive && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-600/90 backdrop-blur-md px-2.5 py-1 text-[10px] font-extrabold text-white border border-red-500/50 shadow-lg animate-pulse">
+                <Clock className="h-3 w-3" />
+                <span>{product.urgency_badge || 'Offre limitée'}</span>
+              </span>
+            )}
+          </div>
 
           {/* Rating */}
-          <div className="flex items-center gap-1 rounded-full bg-neutral-950/80 px-2.5 py-1 text-white backdrop-blur-md border border-white/10">
+          <div className="flex items-center gap-1 rounded-full bg-neutral-950/80 px-2.5 py-1 text-white backdrop-blur-md border border-white/10 shrink-0">
             <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
             <span className="font-mono text-[11px] font-bold tabular-nums">
               {product.rating || 4.9}
@@ -75,8 +109,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </div>
 
-        {/* Audio Quick Preview Trigger */}
-        {onPlayPreview && (
+        {/* Audio Quick Preview Trigger si format audio */}
+        {onPlayPreview && formatInfo.isAudio && (
           <div className="absolute inset-0 flex items-center justify-center opacity-0 backdrop-blur-[2px] transition-opacity duration-200 group-hover:opacity-100 pointer-events-auto">
             <button
               type="button"
@@ -92,10 +126,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         )}
 
-        {/* Subtle Audio Pill in bottom cover */}
-        <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-md bg-neutral-950/80 px-2 py-0.5 text-[10px] font-medium text-neutral-300 backdrop-blur-md">
-          <Headphones className="h-3 w-3 text-amber-400" />
-          <span>Livre audio HD</span>
+        {/* Dynamic Format Pill in bottom cover */}
+        <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-md bg-neutral-950/85 px-2.5 py-1 text-[10px] font-semibold text-neutral-200 backdrop-blur-md border border-neutral-800">
+          <FormatIcon className="h-3 w-3 text-amber-400" />
+          <span>{formatInfo.label}</span>
         </div>
       </div>
 
@@ -105,6 +139,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {categoryName && (
           <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-amber-500 truncate">
             {categoryName}
+          </div>
+        )}
+
+        {/* Urgence Text Message Banner si configuré */}
+        {isUrgencyActive && product.urgency_text && (
+          <div className="mt-1 flex items-center gap-1.5 rounded-lg bg-red-500/10 border border-red-500/20 px-2.5 py-1 text-[10px] font-medium text-red-300">
+            <Sparkles className="h-3 w-3 text-red-400 shrink-0" />
+            <span className="truncate">{product.urgency_text}</span>
           </div>
         )}
 

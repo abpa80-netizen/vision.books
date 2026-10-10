@@ -1,5 +1,5 @@
 import React from 'react';
-import { Crown, Sparkles, CheckCircle2, ArrowRight, MessageCircle, Gift, ShieldCheck } from 'lucide-react';
+import { Crown, Sparkles, CheckCircle2, ArrowRight, MessageCircle, Gift, ShieldCheck, Clock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { trackWhatsAppClick } from '../../services/analytics';
 
@@ -10,6 +10,18 @@ export const VipPackSection: React.FC = () => {
   if (!vipPack || !vipPack.is_active || !vipPack.show_on_home) {
     return null;
   }
+
+  // Urgence Marketing pour le Pack VIP
+  const isUrgencyActive = React.useMemo(() => {
+    if (!vipPack.urgency_active) return false;
+    if (vipPack.urgency_end_date) {
+      const end = new Date(vipPack.urgency_end_date).getTime();
+      if (!isNaN(end) && end < Date.now()) {
+        return false;
+      }
+    }
+    return true;
+  }, [vipPack.urgency_active, vipPack.urgency_end_date]);
 
   const numNormal = vipPack.normal_price || 0;
   const numSale = vipPack.sale_price !== null && vipPack.sale_price !== undefined ? vipPack.sale_price : null;
@@ -98,14 +110,39 @@ Merci de m'indiquer la marche à suivre pour débloquer immédiatement mes accè
             {/* Content & CTA Column */}
             <div className="lg:col-span-7 space-y-6">
               <div>
-                <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-400">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span>Offre Privilège Limitée</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-400">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>Offre Privilège Limitée</span>
+                  </div>
+
+                  {isUrgencyActive && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1 font-mono text-xs font-extrabold text-white shadow-lg animate-pulse">
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>{vipPack.urgency_badge || 'Offre limitée'}</span>
+                    </span>
+                  )}
                 </div>
 
                 <h2 className="mt-2 font-display text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
                   {vipPack.title}
                 </h2>
+
+                {isUrgencyActive && (
+                  <div className="mt-3 rounded-xl border border-red-500/40 bg-red-950/40 p-3 text-xs text-red-200 space-y-1">
+                    <div className="flex items-center justify-between font-bold text-red-400">
+                      <span>{vipPack.urgency_badge || 'Urgence commerciale'}</span>
+                      {vipPack.urgency_end_date && (
+                        <span className="font-mono text-[11px] text-red-300">
+                          Fin : {new Date(vipPack.urgency_end_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
+                    {vipPack.urgency_text && (
+                      <p className="text-neutral-200">{vipPack.urgency_text}</p>
+                    )}
+                  </div>
+                )}
 
                 {vipPack.subtitle && (
                   <p className="mt-2 text-sm sm:text-base font-medium text-amber-300/90 leading-relaxed">

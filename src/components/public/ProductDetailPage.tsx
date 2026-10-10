@@ -151,6 +151,30 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug }) =>
   const discountAmount = hasPromo ? (regularPrice - currentPrice).toFixed(2) : '0';
   const discountPercent = hasPromo ? Math.round(((regularPrice - currentPrice) / regularPrice) * 100) : 0;
 
+  // Urgence Marketing configurable
+  const isUrgencyActive = useMemo(() => {
+    if (!product?.urgency_active) return false;
+    if (product.urgency_end_date) {
+      const end = new Date(product.urgency_end_date).getTime();
+      if (!isNaN(end) && end < Date.now()) {
+        return false;
+      }
+    }
+    return true;
+  }, [product?.urgency_active, product?.urgency_end_date]);
+
+  // Format du produit (Livre audio, Ebook, Autre format)
+  const formatInfo = useMemo(() => {
+    const fmt = (product?.format || 'audiobook').toLowerCase();
+    if (fmt === 'ebook') {
+      return { label: 'Ebook 📚', fullLabel: 'Édition Ebook Numérique (PDF / ePub)', isAudio: false };
+    }
+    if (fmt === 'other') {
+      return { label: 'Autre format 📦', fullLabel: 'Programme Spécial / Masterclass', isAudio: false };
+    }
+    return { label: 'Livre audio 🎧', fullLabel: 'Édition Audio Haute Fidélité Studio', isAudio: true };
+  }, [product?.format]);
+
   // WhatsApp Order Handler (Using admin settings number, no hardcoded phone)
   const handleOrderWhatsApp = async () => {
     if (!product) return;
@@ -328,15 +352,25 @@ ${productUrl}`;
                   <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/90 via-neutral-950/20 to-transparent" />
 
                   {/* Badges on cover */}
-                  <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none">
-                    {(product.is_best_seller || product.isBestSeller) ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-neutral-950 shadow-lg">
-                        <Award className="h-3.5 w-3.5" />
-                        <span>Best-Seller N°1</span>
-                      </span>
-                    ) : (
-                      <div />
-                    )}
+                  <div className="absolute top-4 left-4 right-4 flex items-start justify-between gap-2 pointer-events-none">
+                    <div className="flex flex-col gap-1.5 items-start">
+                      {(product.is_best_seller || product.isBestSeller) ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-neutral-950 shadow-lg">
+                          <Award className="h-3.5 w-3.5" />
+                          <span>Best-Seller N°1</span>
+                        </span>
+                      ) : (
+                        <div />
+                      )}
+
+                      {/* Badge Urgence Marketing si active */}
+                      {isUrgencyActive && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600/90 backdrop-blur-md px-3 py-1 text-xs font-extrabold text-white border border-red-500/50 shadow-xl animate-pulse">
+                          <Clock className="h-3.5 w-3.5" />
+                          <span>{product.urgency_badge || 'Offre limitée'}</span>
+                        </span>
+                      )}
+                    </div>
 
                     {hasPromo && (
                       <span className="rounded-full bg-red-600 px-3 py-1 font-mono text-xs font-extrabold text-white shadow-lg">
@@ -362,14 +396,18 @@ ${productUrl}`;
 
                   {/* Bottom cover pill */}
                   <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs text-neutral-200">
-                    <div className="flex items-center gap-2 rounded-lg bg-neutral-950/80 px-2.5 py-1 backdrop-blur-md">
-                      <Headphones className="h-3.5 w-3.5 text-amber-400" />
-                      <span className="font-medium">Édition Audio Haute Fidélité</span>
+                    <div className="flex items-center gap-2 rounded-lg bg-neutral-950/80 px-2.5 py-1 backdrop-blur-md border border-neutral-800">
+                      {formatInfo.isAudio ? (
+                        <Headphones className="h-3.5 w-3.5 text-amber-400" />
+                      ) : (
+                        <BookOpen className="h-3.5 w-3.5 text-amber-400" />
+                      )}
+                      <span className="font-medium">{formatInfo.fullLabel}</span>
                     </div>
                     <button
                       onClick={handleShare}
                       className="flex items-center gap-1 rounded-lg bg-neutral-950/80 px-2.5 py-1 backdrop-blur-md hover:text-white transition-colors"
-                      title="Partager ce livre"
+                      title="Partager ce produit"
                     >
                       <Share2 className="h-3 w-3" />
                       <span>Partager</span>
@@ -518,6 +556,28 @@ ${productUrl}`;
                 <p className="mt-4 text-sm sm:text-base leading-relaxed text-neutral-300">
                   {product.short_description || product.summary}
                 </p>
+
+                {/* Urgence Commerciale si configurée et active */}
+                {isUrgencyActive && (
+                  <div className="mt-4 rounded-2xl border border-red-500/40 bg-red-950/40 p-4 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-red-400">
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="h-4 w-4 animate-spin text-red-400" />
+                        <span>{product.urgency_badge || 'Offre Limitée dans le temps'}</span>
+                      </div>
+                      {product.urgency_end_date && (
+                        <span className="font-mono text-[11px] text-red-300">
+                          Jusqu'au {new Date(product.urgency_end_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
+                    {product.urgency_text && (
+                      <p className="text-xs text-neutral-200 leading-relaxed font-medium">
+                        {product.urgency_text}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* ========================================================= */}
                 {/* PRIX ULTRA VISIBLE & BLOC DE COMMANDE                     */}

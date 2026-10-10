@@ -1,0 +1,232 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Livre audio ou ressource premium publiée par VISION BOOKS",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 255 },
+        "author": { "type": "string", "maxLength": 255 },
+        "slug": { "type": "string", "maxLength": 255 },
+        "cover": { "type": "string", "maxLength": 2048 },
+        "category": { "type": "string", "maxLength": 128 },
+        "normal_price": { "type": "number" },
+        "sale_price": { "type": "number" },
+        "short_description": { "type": "string", "maxLength": 1000 },
+        "full_description": { "type": "string", "maxLength": 10000 },
+        "key_points": { "type": "array" },
+        "bonus": { "type": "string", "maxLength": 2000 },
+        "cta_text": { "type": "string", "maxLength": 255 },
+        "audio_url": { "type": "string", "maxLength": 2048 },
+        "audio_download_url": { "type": "string", "maxLength": 2048 },
+        "product_details": { "type": "string", "maxLength": 10000 },
+        "is_best_seller": { "type": "boolean" },
+        "is_active": { "type": "boolean" },
+        "created_at": { "type": "string", "maxLength": 100 },
+        "updated_at": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "title", "author", "slug", "category", "normal_price"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Thématique de livres audio VISION BOOKS",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 255 },
+        "slug": { "type": "string", "maxLength": 255 },
+        "icon": { "type": "string", "maxLength": 32 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "is_active": { "type": "boolean" },
+        "created_at": { "type": "string", "maxLength": 100 },
+        "updated_at": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "name", "slug"]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "Prospect qualifié ayant téléchargé un Lead Magnet avec séquence de relances marketing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "first_name": { "type": "string", "maxLength": 128 },
+        "whatsapp": { "type": "string", "maxLength": 64 },
+        "lead_magnet_id": { "type": "string", "maxLength": 128 },
+        "lead_magnet_title": { "type": "string", "maxLength": 255 },
+        "source": { "type": "string", "maxLength": 255 },
+        "created_at": { "type": "string", "maxLength": 100 },
+        "followup_j1": { "type": "string", "maxLength": 3000 },
+        "followup_j2": { "type": "string", "maxLength": 3000 },
+        "followup_j3": { "type": "string", "maxLength": 3000 },
+        "followup_generated_at": { "type": "string", "maxLength": 100 },
+        "followup_updated_at": { "type": "string", "maxLength": 100 },
+        "followup_status_j1": { "type": "string", "maxLength": 50 },
+        "followup_status_j2": { "type": "string", "maxLength": 50 },
+        "followup_status_j3": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "first_name", "whatsapp"]
+    },
+    "LeadMagnet": {
+      "title": "LeadMagnet",
+      "description": "Ressource gratuite pour la capture de prospects",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 255 },
+        "slug": { "type": "string", "maxLength": 255 },
+        "image": { "type": "string", "maxLength": 2048 },
+        "description": { "type": "string", "maxLength": 5000 },
+        "subtitle": { "type": "string", "maxLength": 1000 },
+        "marketing_content": { "type": "string", "maxLength": 10000 },
+        "benefits": { "type": "array" },
+        "file_url": { "type": "string", "maxLength": 2048 },
+        "active": { "type": "boolean" },
+        "downloads_count": { "type": "number" },
+        "created_at": { "type": "string", "maxLength": 100 },
+        "updated_at": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "title", "slug", "file_url"]
+    },
+    "Testimonial": {
+      "title": "Testimonial",
+      "description": "Témoignage client VISION BOOKS",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 255 },
+        "role": { "type": "string", "maxLength": 255 },
+        "company": { "type": "string", "maxLength": 255 },
+        "content": { "type": "string", "maxLength": 5000 },
+        "rating": { "type": "number" },
+        "avatar": { "type": "string", "maxLength": 2048 },
+        "is_active": { "type": "boolean" },
+        "created_at": { "type": "string", "maxLength": 100 },
+        "updated_at": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "name", "content", "rating"]
+    },
+    "BlogPost": {
+      "title": "BlogPost",
+      "description": "Article de blog et guide stratégique VISION BOOKS",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 255 },
+        "slug": { "type": "string", "maxLength": 255 },
+        "excerpt": { "type": "string", "maxLength": 2000 },
+        "content": { "type": "string", "maxLength": 50000 },
+        "cover_image": { "type": "string", "maxLength": 2048 },
+        "author": { "type": "string", "maxLength": 255 },
+        "read_time": { "type": "string", "maxLength": 64 },
+        "is_published": { "type": "boolean" },
+        "created_at": { "type": "string", "maxLength": 100 },
+        "updated_at": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "title", "slug", "content"]
+    },
+    "Setting": {
+      "title": "Setting",
+      "description": "Paramètre de configuration VISION BOOKS",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "key": { "type": "string", "maxLength": 128 },
+        "value": { "type": "string", "maxLength": 10000 },
+        "updated_at": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "key", "value"]
+    },
+    "AnalyticsEvent": {
+      "title": "AnalyticsEvent",
+      "description": "Événement de visite et de conversion",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "event_type": { "type": "string", "maxLength": 128 },
+        "product_id": { "type": "string", "maxLength": 128 },
+        "lead_id": { "type": "string", "maxLength": 128 },
+        "page": { "type": "string", "maxLength": 500 },
+        "visitor_id": { "type": "string", "maxLength": 128 },
+        "metadata": { "type": "string", "maxLength": 10000 },
+        "created_at": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "event_type", "page"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Compte administrateur autorisé pour l'espace /admin",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 255 },
+        "role": { "type": "string", "maxLength": 64 },
+        "created_at": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "email"]
+    },
+    "VipPack": {
+      "title": "VipPack",
+      "description": "Offre groupée VIP Pack Vision Books",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 255 },
+        "subtitle": { "type": "string", "maxLength": 500 },
+        "image": { "type": "string", "maxLength": 2048 },
+        "normal_price": { "type": "number" },
+        "sale_price": { "type": "number" },
+        "description": { "type": "string", "maxLength": 5000 },
+        "contents": { "type": "array" },
+        "cta_text": { "type": "string", "maxLength": 255 },
+        "show_on_home": { "type": "boolean" },
+        "is_active": { "type": "boolean" },
+        "created_at": { "type": "string", "maxLength": 100 },
+        "updated_at": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "title", "normal_price"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Catalogue de livres audio disponibles"
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "Thématiques et catégories de livres audio"
+    },
+    "/leads/{leadId}": {
+      "schema": { "$ref": "#/entities/Lead" },
+      "description": "Données privées des prospects capturés via Lead Magnets"
+    },
+    "/lead_magnets/{leadMagnetId}": {
+      "schema": { "$ref": "#/entities/LeadMagnet" },
+      "description": "Ressources gratuites offertes aux prospects"
+    },
+    "/testimonials/{testimonialId}": {
+      "schema": { "$ref": "#/entities/Testimonial" },
+      "description": "Témoignages et avis des clients et auditeurs"
+    },
+    "/blog_posts/{postId}": {
+      "schema": { "$ref": "#/entities/BlogPost" },
+      "description": "Articles de blog et contenus stratégiques"
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/Setting" },
+      "description": "Paramètres système et configuration WhatsApp"
+    },
+    "/analytics/{eventId}": {
+      "schema": { "$ref": "#/entities/AnalyticsEvent" },
+      "description": "Événements de trafic et conversions"
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/Admin" },
+      "description": "Administrateurs autorisés pour l'espace /admin"
+    },
+    "/vip_packs/{vipPackId}": {
+      "schema": { "$ref": "#/entities/VipPack" },
+      "description": "Configuration du Pack VIP affiché sur la page d'accueil"
+    }
+  }
+}

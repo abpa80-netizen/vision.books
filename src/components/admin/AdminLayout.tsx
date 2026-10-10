@@ -14,9 +14,13 @@ import {
   X,
   ChevronRight,
   Crown,
+  LogOut,
+  ShieldCheck,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import { AdminTab } from '../../types';
+import { AdminLoginPage } from './AdminLoginPage';
 import { DashboardView } from './views/DashboardView';
 import { ProductsView } from './views/ProductsView';
 import { CategoriesView } from './views/CategoriesView';
@@ -29,6 +33,7 @@ import { SettingsView } from './views/SettingsView';
 
 export const AdminLayout: React.FC = () => {
   const { currentPath, activeAdminTab, setActiveAdminTab, navigateTo, products, categories, leads } = useApp();
+  const { user, isAdmin, loading, logout } = useAuth();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Sync activeAdminTab with currentPath (e.g. /admin/dashboard, /admin/parametres, /admin/pack-vip)
@@ -46,6 +51,23 @@ export const AdminLayout: React.FC = () => {
       }
     }
   }, [currentPath, activeAdminTab, setActiveAdminTab]);
+
+  // If Auth is still loading, show a smooth branded loader
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-neutral-950 text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
+          <span className="font-mono text-xs text-neutral-400">Vérification de l'accès Firebase Auth...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Security gate: If not authenticated or not an admin, render AdminLoginPage
+  if (!user || !isAdmin) {
+    return <AdminLoginPage />;
+  }
 
   const handleTabClick = (tabId: AdminTab) => {
     setActiveAdminTab(tabId);
@@ -199,13 +221,39 @@ export const AdminLayout: React.FC = () => {
               <ArrowUpRight className="h-3.5 w-3.5 text-amber-500" />
             </button>
 
-            <div className="flex items-center gap-2 border-l border-neutral-800 pl-3">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/20 text-[11px] font-bold text-amber-400">
-                VB
+            <div className="flex items-center gap-3 border-l border-neutral-800 pl-3">
+              <div className="flex items-center gap-2">
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt={user.displayName || 'Admin'}
+                    className="h-7 w-7 rounded-full border border-amber-500/40 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/20 text-[11px] font-bold text-amber-400 border border-amber-500/30">
+                    {(user.displayName || user.email || 'A').charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="hidden sm:block text-left">
+                  <div className="text-[11px] font-semibold text-white truncate max-w-[130px]">
+                    {user.displayName || user.email?.split('@')[0]}
+                  </div>
+                  <div className="flex items-center gap-1 text-[9px] font-mono text-emerald-400">
+                    <ShieldCheck className="h-2.5 w-2.5" />
+                    <span>Admin vérifié</span>
+                  </div>
+                </div>
               </div>
-              <span className="hidden sm:inline text-xs font-semibold text-neutral-300">
-                Directeur
-              </span>
+
+              <button
+                type="button"
+                onClick={logout}
+                className="flex items-center gap-1 rounded-lg border border-neutral-800 bg-neutral-900/80 px-2.5 py-1.5 text-[11px] font-medium text-neutral-400 hover:bg-neutral-850 hover:text-red-400 transition-colors"
+                title="Déconnexion Firebase"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span className="hidden md:inline">Déconnexion</span>
+              </button>
             </div>
           </div>
         </header>

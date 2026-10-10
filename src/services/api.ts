@@ -1,4 +1,4 @@
-import { Category, Product, VipPack } from '../types';
+import { Category, Product, VipPack, Lead, LeadMagnetMarketingContent, CategorySuggestion } from '../types';
 
 export const api = {
   // File / Image upload
@@ -137,12 +137,14 @@ export const api = {
     author: string;
     category?: string;
     bonus?: string;
+    existing_categories?: Array<{ id: string; name: string; slug: string }>;
   }): Promise<{
     full_description: string;
     key_points: string[];
     bonus_presentation: string;
     short_description: string;
     cta_text: string;
+    suggested_category?: CategorySuggestion;
   }> {
     const res = await fetch('/api/products/generate-ai', {
       method: 'POST',
@@ -152,6 +154,27 @@ export const api = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Erreur lors de la génération IA du produit');
+    }
+    const json = await res.json();
+    return json.data;
+  },
+
+  async generateLeadMagnetAI(params: {
+    title?: string;
+    topic?: string;
+    target_audience?: string;
+    raw_content?: string;
+    field_to_regenerate?: string;
+    existing_values?: Record<string, any>;
+  }): Promise<LeadMagnetMarketingContent> {
+    const res = await fetch('/api/lead-magnets/generate-ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Erreur lors de la génération IA du Lead Magnet');
     }
     const json = await res.json();
     return json.data;
@@ -222,6 +245,7 @@ export const api = {
   },
 
   async createLead(data: {
+    id?: string;
     first_name: string;
     whatsapp: string;
     lead_magnet_id?: string | null;
@@ -244,6 +268,43 @@ export const api = {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Erreur lors de la suppression du lead');
+    return res.json();
+  },
+
+  async updateLead(id: string, updates: Partial<Lead>): Promise<Lead> {
+    const res = await fetch(`/api/leads/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) throw new Error('Erreur lors de la mise à jour du lead');
+    return res.json();
+  },
+
+  async generateLeadSequenceAI(params: {
+    first_name: string;
+    whatsapp: string;
+    lead_magnet_id?: string | null;
+    lead_magnet_title?: string;
+    lead_id?: string;
+    step?: 'J1' | 'J2' | 'J3' | 'all';
+  }): Promise<{
+    success: boolean;
+    j1: string;
+    j2: string;
+    j3: string;
+    recommendedProduct?: any;
+    generated_at: string;
+  }> {
+    const res = await fetch('/api/leads/generate-sequence', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Erreur lors de la génération de la séquence' }));
+      throw new Error(err.error || 'Erreur lors de la génération de la séquence');
+    }
     return res.json();
   },
 
@@ -450,6 +511,34 @@ export const api = {
   async deleteVipPack(): Promise<{ success: boolean }> {
     const res = await fetch('/api/vip-pack', { method: 'DELETE' });
     if (!res.ok) throw new Error('Erreur lors de la suppression du Pack VIP');
+    return res.json();
+  },
+
+  // Gemini Commercial Assistant
+  async chatWithAssistant(messages: Array<{ role: 'user' | 'assistant'; content: string }>): Promise<{
+    message: string;
+    suggestedProducts?: Array<{
+      id: string;
+      title: string;
+      author: string;
+      slug: string;
+      cover?: string;
+      category?: string;
+      normal_price?: number;
+      sale_price?: number | null;
+    }>;
+    whatsappNumber?: string;
+    hasActiveVipPack?: boolean;
+  }> {
+    const res = await fetch('/api/assistant/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Erreur lors de la communication avec l’assistant');
+    }
     return res.json();
   },
 };
