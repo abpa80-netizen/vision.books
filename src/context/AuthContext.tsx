@@ -92,7 +92,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await signInWithPopup(auth, googleProvider);
     } catch (err: any) {
       console.error('Google sign-in error:', err);
-      setError(err.message || 'Échec de la connexion Google');
+
+      // Detect unauthorized-domain error and provide helpful message
+      if (err.code === 'auth/unauthorized-domain') {
+        const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'unknown domain';
+        const errorMessage = `❌ Domaine non autorisé: "${currentDomain}"\n\nPour autoriser ce domaine:\n1. Allez sur Firebase Console (gen-lang-client-0082810984)\n2. Authentication → Settings → Authorized domains\n3. Ajoutez "${currentDomain}" à la liste\n\nDomaines actuellement autorisés:\n• localhost:5173 (dev)\n• aistudio.build (AI Studio)\n• Vérifiez votre domaine production`;
+        setError(errorMessage);
+        console.error('Unauthorized domain for Firebase Auth:', { currentDomain, error: err.message });
+      } else if (err.code === 'auth/popup-blocked') {
+        setError('❌ Pop-up bloqué: Votre navigateur a bloqué la fenêtre de connexion. Vérifiez vos paramètres de pop-ups.');
+        console.error('Pop-up was blocked during sign-in:', err);
+      } else if (err.code === 'auth/operation-not-supported-in-this-environment') {
+        setError('❌ Opération non supportée: Firebase Auth pop-up n\'est pas disponible dans cet environnement.');
+        console.error('Pop-up sign-in not supported in this environment:', err);
+      } else {
+        setError(err.message || 'Échec de la connexion Google. Vérifiez votre connexion réseau.');
+        console.error('Unexpected Firebase Auth error:', err);
+      }
       throw err;
     } finally {
       setLoading(false);
